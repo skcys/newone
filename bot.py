@@ -1,57 +1,58 @@
 import os
-import logging
 import yt_dlp
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+import asyncio
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import FSInputFile
+from aiogram.filters import Command
+from aiogram.enums import ParseMode
+from dotenv import load_dotenv
 
-# Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Load environment variables
+load_dotenv()
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Set your bot token here
-TOKEN = os.getenv("AAGrtViOlLd51IHSEUknqEXLGb2KMNC2FaU")
+if not BOT_TOKEN:
+    print("Error: TELEGRAM_BOT_TOKEN is missing.")
+    exit(1)
 
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("Send me a Facebook video URL, and I'll download it for you!")
+bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
+dp = Dispatcher()
 
-def download_facebook_video(update: Update, context: CallbackContext) -> None:
-    url = update.message.text
+@dp.message(Command("start"))
+async def start_command(message: types.Message):
+    await message.answer("👋 Hi! Send me a Facebook video URL, and I'll download it for you!")
+
+@dp.message()
+async def download_fb_video(message: types.Message):
+    url = message.text
+    chat_id = message.chat.id
+
     if "facebook.com" not in url:
-        update.message.reply_text("Please send a valid Facebook video URL.")
+        await message.answer("❌ Please send a valid Facebook video URL.")
         return
 
-    update.message.reply_text("Downloading video, please wait...")
-
-    # Set up yt_dlp options
-    ydl_opts = {
-        'outtmpl': 'facebook_video.mp4',
-        'format': 'best'
-    }
+    await message.answer("🔄 Downloading video... Please wait.")
 
     try:
+        ydl_opts = {'outtmpl': 'video.mp4', 'format': 'best'}
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
         # Send the video to the user
-        with open("facebook_video.mp4", "rb") as video:
-            update.message.reply_video(video)
+        video = FSInputFile("video.mp4")
+        await bot.send_video(chat_id, video)
 
-        os.remove("facebook_video.mp4")  # Clean up
+        # Delete the file after sending
+        os.remove("video.mp4")
 
     except Exception as e:
-        update.message.reply_text(f"Error: {str(e)}")
-        logger.error(f"Error downloading video: {e}")
+        await message.answer(f"❌ Error: {str(e)}")
 
-def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
+async def main():
+    print("Bot is running...")
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, download_facebook_video))
-
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    asyncio.run(main())
