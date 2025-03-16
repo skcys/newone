@@ -10,7 +10,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # Set your bot token here
-TOKEN = os.getenv("8023705430:AAGrtViOlLd51IHSEUknqEXLGb2KMNC2FaU")
+TOKEN = os.getenv("AAGrtViOlLd51IHSEUknqEXLGb2KMNC2FaU")
 
 def start(update: Update, context: CallbackContext) -> None:
     update.message.reply_text("Send me a Facebook video URL, and I'll download it for you!")
